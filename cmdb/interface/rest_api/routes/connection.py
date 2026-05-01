@@ -57,3 +57,34 @@ def connection_test_frontend() -> Response:
     except Exception as err:
         LOGGER.debug("[connection_test_frontend] Exception: %s", err)
         abort(500, "Could not connect to REST API!")
+
+
+@connection_routes.route('/healthz', methods=['GET', 'HEAD'])
+def healthz() -> Response:
+    """
+    Lightweight liveness endpoint for orchestrators.
+
+    Returns:
+        DefaultResponse: Basic service metadata and status=true if the app process is running
+    """
+    return DefaultResponse({
+        'status': True,
+        'title': __title__,
+        'version': __version__
+    }).make_response()
+
+
+@connection_routes.route('/readyz', methods=['GET', 'HEAD'])
+def readyz() -> Response:
+    """
+    Readiness endpoint that verifies backing database reachability.
+
+    Returns:
+        DefaultResponse: Readiness status and DB connectivity flag
+    """
+    connected = dbm.status()
+    status_code = 200 if connected else 503
+    return DefaultResponse({
+        'status': connected,
+        'connected': connected
+    }).make_response(status=status_code)

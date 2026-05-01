@@ -1,0 +1,100 @@
+nameOverride: ""
+fullnameOverride: ""
+
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/datagerry/datagerry-backend
+    tag: "3.1.1"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 4000
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  extraArgs:
+    - --cloud
+  corsOrigins: []
+  env:
+    connectionString: ""
+  probes:
+    liveness:
+      path: /rest/healthz
+      initialDelaySeconds: 20
+      periodSeconds: 15
+      timeoutSeconds: 2
+      failureThreshold: 3
+    readiness:
+      path: /rest/readyz
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/datagerry/datagerry-frontend
+    tag: "3.1.1"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+mongo:
+  host: mongodb
+  port: 27017
+  databaseName: cmdb
+
+webServer:
+  host: 0.0.0.0
+  port: 4000
+
+secrets:
+  existingSecret: ""
+  create: true
+  rsaPublicKey: ""
+  rsaPrivateKey: ""
+  symmetricKey: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: datagerry.local
+      paths:
+        - path: /rest
+          pathType: Prefix
+          service: backend
+        - path: /docs
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: frontend
+  tls: []
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

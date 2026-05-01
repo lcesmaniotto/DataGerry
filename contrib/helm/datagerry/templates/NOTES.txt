@@ -1,0 +1,14 @@
+DataGerry has been deployed.
+
+Check backend readiness:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/component=backend
+
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  - {{ .host }}
+{{- end }}
+
+Liveness endpoint:
+  /rest/healthz
+Readiness endpoint:
+  /rest/readyz

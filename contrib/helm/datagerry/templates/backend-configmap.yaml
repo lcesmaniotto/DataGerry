@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "datagerry.fullname" . }}-backend-config
+  labels:
+    {{- include "datagerry.labels" . | nindent 4 }}
+data:
+  cmdb.conf: |
+    [Database]
+    host = {{ .Values.mongo.host }}
+    port = {{ .Values.mongo.port }}
+    database_name = {{ .Values.mongo.databaseName }}
+
+    [WebServer]
+    host = {{ .Values.webServer.host }}
+    port = {{ .Values.webServer.port }}

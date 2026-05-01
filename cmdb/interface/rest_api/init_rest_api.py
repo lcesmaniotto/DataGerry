@@ -19,6 +19,7 @@ Registration of all REST API Routes for the FlaskApp
 from logging import Logger, getLogger
 import sys
 import copy
+import os
 from datetime import datetime, timezone
 # from flask import request
 from flask_cors import CORS
@@ -54,6 +55,44 @@ from cmdb.manager.system_manager.system_config_reader import SystemConfigReader
 LOGGER: Logger = getLogger(__name__)
 
 # -------------------------------------------------------------------------------------------------------------------- #
+def _validate_cloud_runtime_environment() -> None:
+    """
+    Validates required key material for cloud mode when local mode is disabled.
+
+    Raises:
+        RuntimeError: If one or more required environment variables are missing
+    """
+    if not cmdb.__CLOUD_MODE__ or cmdb.__LOCAL_MODE__:
+        return
+
+    required_vars = [
+        'DG_RSA_PRIVATE_KEY',
+        'DG_RSA_PUBLIC_KEY',
+        'DG_SYMMETRIC_KEY'
+    ]
+
+    missing_vars = [env_name for env_name in required_vars if not os.getenv(env_name)]
+    if missing_vars:
+        missing = ', '.join(missing_vars)
+        raise RuntimeError(
+            f"Cloud mode requires key material via environment variables. Missing: {missing}"
+        )
+
+
+def _get_cors_origins() -> list[str] | str:
+    """
+    Returns configured CORS origins.
+
+    Uses DG_CORS_ORIGINS as a comma-separated list. If unset, keeps permissive
+    default behavior for backwards compatibility.
+    """
+    cors_origins = os.getenv('DG_CORS_ORIGINS', '').strip()
+    if not cors_origins:
+        return '*'
+
+    return [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+
+
 def create_rest_api(database_maanger: MongoDatabaseManager) -> BaseCmdbApp:
     """
     Initialisation of the Flask App
@@ -68,7 +107,11 @@ def create_rest_api(database_maanger: MongoDatabaseManager) -> BaseCmdbApp:
     app.url_map.strict_slashes = True
 
     # Import App Extensions
-    CORS(app=app, expose_headers=['X-API-Version', 'X-Total-Count'])
+    CORS(
+        app=app,
+        origins=_get_cors_origins(),
+        expose_headers=['X-API-Version', 'X-Total-Count']
+    )
 
     if cmdb.__MODE__ == 'DEBUG':
         config = app_config['development']
@@ -106,6 +149,8 @@ def create_rest_api(database_maanger: MongoDatabaseManager) -> BaseCmdbApp:
         # return response
 
     with app.app_context():
+        _validate_cloud_runtime_environment()
+
         register_converters(app)
         register_error_pages(app)
         register_blueprints(app)
